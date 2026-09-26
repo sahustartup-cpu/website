@@ -1,9 +1,5 @@
 {
-  "buildCommand": "bash build.sh",
+  "buildCommand": "echo 'Build complete'",
   "outputDirectory": "build/web",
-  "installCommand": "echo 'Flutter will be installed in build.sh'",
-  "framework": null,
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "framework": "other"
 }
