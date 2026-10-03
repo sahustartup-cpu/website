@@ -1,5 +1,5 @@
 {
   "buildCommand": "echo 'Build complete'",
   "outputDirectory": "build/web",
-  "framework": "other"
+  "framework": null
 }
