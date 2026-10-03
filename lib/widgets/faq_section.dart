@@ -1,94 +1,134 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../constants.dart';
+import 'fx/fx_theme.dart';
+import 'fx/cursor_fx.dart';
+import 'fx/reveal.dart';
 
+/// White section — centred heading and a centred column of rounded
+/// question boxes that expand to show the answer.
 class FaqSection extends StatelessWidget {
   const FaqSection({super.key});
+
+  static const _faqs = [
+    ('Do you work with US clients?',
+        'Yes! I have partnered with startups and businesses in the US, handling timezone differences with clear communication and regular updates.'),
+    ('What is your tech stack?',
+        'I specialize in Flutter for web & mobile, building high-performance apps with Supabase or Firebase as the backend. I also build AI agents using OpenAI and LangChain.'),
+    ('How does the process work?',
+        'We start with a discovery call, define a clear roadmap, and move through iterative development sprints where you see progress every week.'),
+    ('How do we communicate?',
+        'I use Slack, email, and Zoom for meetings, and make sure there is timezone overlap so we are always aligned.'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final pad = w > 800 ? 80.0 : 24.0;
-
-    final faqs = [
-      ('Do you work with US clients?', 'Yes! I have successfully partnered with startups and businesses in the US, handling timezone differences seamlessly with clear communication and regular updates.'),
-      ('What is your tech stack?', 'I specialize in Flutter for Web & Mobile, building high-performance apps with Supabase or Firebase as the backend. I also craft AI agents using OpenAI and LangChain.'),
-      ('How does the process work?', 'We start with a discovery call, define a clear roadmap, and move through iterative development sprints where you see progress every week.'),
-      ('How do we communicate?', 'I use Slack, email, and Zoom for meetings. I ensure timezone overlap to guarantee we are always aligned.'),
-    ];
+    final pad = Fx.hPad(w);
 
     return Container(
-      color: AppColors.lightBg,
-      padding: EdgeInsets.symmetric(horizontal: pad, vertical: 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('FAQ',
-              style: GoogleFonts.dmSans(
-                color: AppColors.gray,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2,
-              )),
-          const SizedBox(height: 16),
-          Text('Questions? Answers.',
-              style: GoogleFonts.syne(
-                color: AppColors.black,
-                fontWeight: FontWeight.w800,
-                fontSize: w > 800 ? 52 : 36,
-                letterSpacing: -1.5,
-              )),
-          const SizedBox(height: 60),
-          Column(
-              children: faqs.map((f) => _FaqItem(f)).toList()
+      color: Colors.white,
+      padding: EdgeInsets.fromLTRB(pad, w > 800 ? 120 : 80, pad, w > 800 ? 130 : 90),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: Column(
+            children: [
+              Reveal(
+                child: Text("FAQ'S",
+                    textAlign: TextAlign.center,
+                    style: Fx.pro(Fx.clamp(w * 0.06, 44, 80), color: Fx.ink, weight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 16),
+              Reveal(
+                delay: const Duration(milliseconds: 140),
+                child: Text('Everything you need to know before we start working together.',
+                    textAlign: TextAlign.center,
+                    style: Fx.body(size: 17, color: Fx.ink.withValues(alpha: 0.55))),
+              ),
+              const SizedBox(height: 56),
+              for (var i = 0; i < _faqs.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Reveal(
+                    delay: Duration(milliseconds: i * 80),
+                    dy: 24,
+                    child: _FaqItem(q: _faqs[i].$1, a: _faqs[i].$2, initiallyOpen: i == 0),
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _FaqItem extends StatefulWidget {
-  final (String, String) faq;
-  const _FaqItem(this.faq);
+  final String q;
+  final String a;
+  final bool initiallyOpen;
+  const _FaqItem({required this.q, required this.a, this.initiallyOpen = false});
+
   @override
   State<_FaqItem> createState() => _FaqItemState();
 }
 
 class _FaqItemState extends State<_FaqItem> {
-  bool _expanded = false;
+  late bool _open = widget.initiallyOpen;
+  bool _h = false;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Divider(color: Colors.black.withValues(alpha: 0.1)),
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(vertical: 8),
-            onExpansionChanged: (v) => setState(() => _expanded = v),
-            title: Text(widget.faq.$1,
-                style: GoogleFonts.syne(
-                  color: AppColors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                )),
-            trailing: Icon(_expanded ? Icons.remove : Icons.add, color: AppColors.black),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 40, 24),
-                child: Text(widget.faq.$2,
-                    style: GoogleFonts.dmSans(
-                      color: AppColors.gray,
-                      fontSize: 15,
-                      height: 1.7,
-                    )),
-              ),
-            ],
-          ),
+    return CursorHover(
+      onTap: () => setState(() => _open = !_open),
+      onHover: (v) => setState(() => _h = v),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 22),
+        decoration: BoxDecoration(
+          color: _open || _h ? const Color(0xFFF3F3F1) : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Fx.ink.withValues(alpha: 0.1)),
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(widget.q, style: Fx.pro(18, color: Fx.ink))),
+                const SizedBox(width: 16),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _open ? Fx.ink : Colors.transparent,
+                    border: Border.all(color: Fx.ink.withValues(alpha: _open ? 1 : 0.2)),
+                  ),
+                  child: AnimatedRotation(
+                    turns: _open ? 0.125 : 0,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Fx.ease,
+                    child: Icon(Icons.add_rounded, size: 18, color: _open ? Colors.white : Fx.ink),
+                  ),
+                ),
+              ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 450),
+              curve: Fx.ease,
+              alignment: Alignment.topLeft,
+              child: _open
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 14, right: 50),
+                      child: Text(widget.a,
+                          style: Fx.body(size: 16, color: Fx.ink.withValues(alpha: 0.65))),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

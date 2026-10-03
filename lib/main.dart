@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import 'constants.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Faster visibility callbacks so scroll reveals fire as soon as content appears.
+  VisibilityDetectorController.instance.updateInterval = const Duration(milliseconds: 60);
 
   await Supabase.initialize(
     url: SupabaseConfig.url,

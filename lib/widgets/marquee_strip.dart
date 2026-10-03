@@ -1,106 +1,109 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../constants.dart';
+import 'fx/fx_theme.dart';
 
-class MarqueeStrip extends StatefulWidget {
+/// White band with two rows of small rounded word boxes scrolling in opposite
+/// directions.
+class MarqueeStrip extends StatelessWidget {
   const MarqueeStrip({super.key});
 
-  @override
-  State<MarqueeStrip> createState() => _MarqueeStripState();
-}
-
-class _MarqueeStripState extends State<MarqueeStrip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  final List<String> _items = [
-    'Branding', 'Web Design', 'App Development', '3D Solutions', 'AI Agent',
-    'Motion Design', 'UI/UX', 'AI Agent', 'Branding', 'Web Design',
-    'App Development', '3D Solutions', 'Motion Design', 'UI/UX',
+  static const _services = [
+    'Brand Identity', 'Web Design', 'Mobile Apps', 'AI Agents',
+    'UI/UX Design', '3D Visuals', 'Landing Pages', 'Web Apps',
+  ];
+  static const _skills = [
+    'Flutter', 'Next.js', 'Supabase', 'Figma', 'Firebase',
+    'OpenAI', 'Automation', 'E-commerce', 'SEO', 'Dashboards',
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-    _anim = Tween<double>(begin: 0, end: 1).animate(_ctrl);
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.symmetric(vertical: w > 800 ? 36 : 26),
+      child: const Column(
+        children: [
+          _PillRow(words: _services, seconds: 40, reverse: false),
+          SizedBox(height: 10),
+          _PillRow(words: _skills, seconds: 46, reverse: true),
+        ],
+      ),
+    );
+  }
+}
+
+class _PillRow extends StatefulWidget {
+  final List<String> words;
+  final int seconds;
+  final bool reverse;
+  const _PillRow({required this.words, required this.seconds, required this.reverse});
+
+  @override
+  State<_PillRow> createState() => _PillRowState();
+}
+
+class _PillRowState extends State<_PillRow> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: Duration(seconds: widget.seconds))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      // color and decoration merged — no conflict
-      decoration: const BoxDecoration(
-        color: AppColors.black,
-        border: Border.symmetric(
-          horizontal: BorderSide(color: Color(0xFF1A1A1A), width: 1),
+    final w = MediaQuery.of(context).size.width;
+    final fontSize = w > 800 ? 14.0 : 12.0;
+
+    Widget pill(String text, int i) {
+      // Every third box is filled black for rhythm.
+      final filled = i % 3 == 1;
+      return Padding(
+        padding: const EdgeInsets.only(right: 10),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: fontSize * 1.15, vertical: fontSize * 0.6),
+          decoration: BoxDecoration(
+            color: filled ? Fx.ink : const Color(0xFFF4F4F1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Fx.ink.withValues(alpha: filled ? 1 : 0.12)),
+          ),
+          child: Text(
+            text,
+            style: Fx.body(size: fontSize, color: filled ? Colors.white : Fx.ink, height: 1.2)
+                .copyWith(fontWeight: FontWeight.w500, letterSpacing: -0.1),
+          ),
+        ),
+      );
+    }
+
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var copy = 0; copy < 2; copy++)
+          for (var i = 0; i < widget.words.length; i++) pill(widget.words[i], i),
+      ],
+    );
+
+    return ClipRect(
+      child: SizedBox(
+        height: fontSize * 1.2 + fontSize * 1.2 + 4,
+        child: OverflowBox(
+          minWidth: 0,
+          maxWidth: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: AnimatedBuilder(
+            animation: _c,
+            child: row,
+            builder: (_, child) {
+              // Row holds two copies; shifting by half its width loops seamlessly.
+              final t = widget.reverse ? 1 - _c.value : _c.value;
+              return FractionalTranslation(translation: Offset(-0.5 * t, 0), child: child);
+            },
+          ),
         ),
       ),
-      height: 52,
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (_, __) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              const itemWidth = 180.0;
-              final totalWidth = _items.length * itemWidth;
-              final offset = -(_anim.value * totalWidth / 2);
-
-              return Stack(
-                children: [
-                  Positioned(
-                    left: offset,
-                    top: 0,
-                    bottom: 0,
-                    width: totalWidth * 2,
-                    child: Row(
-                      children: List.generate(_items.length * 2, (i) {
-                        final label = _items[i % _items.length];
-                        return SizedBox(
-                          width: itemWidth,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                label.toUpperCase(),
-                                style: GoogleFonts.syne(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.1,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '✦',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                  fontSize: 10,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      ),
     );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
   }
 }

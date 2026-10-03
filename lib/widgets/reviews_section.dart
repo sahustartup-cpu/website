@@ -1,236 +1,245 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../constants.dart';
+import 'fx/fx_theme.dart';
+import 'fx/cursor_fx.dart';
+import 'fx/reveal.dart';
 
-class ReviewsSection extends StatelessWidget {
+/// Black section — centred "—— Reviews" heading (About Me style) and compact white review cards
+/// with yellow stars (4 per row on desktop, 2 on tablet, 1 on mobile).
+/// The first row is shown; "View all reviews" expands to show the rest.
+class ReviewsSection extends StatefulWidget {
   final List<Map<String, dynamic>> reviews;
   const ReviewsSection({super.key, required this.reviews});
+
+  static const star = Color(0xFFFFC107);
+
+  @override
+  State<ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<ReviewsSection> {
+  bool _showAll = false;
+
+  Widget _row(List<Map<String, dynamic>> items, int cols) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var c = 0; c < cols; c++) ...[
+                if (c > 0) const SizedBox(width: 16),
+                Expanded(
+                  child: c < items.length
+                      ? Reveal(
+                          delay: Duration(milliseconds: c * 100),
+                          dy: 30,
+                          child: _ReviewCard(r: items[c]),
+                        )
+                      : const SizedBox(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final isWide = w > 900;
-    final pad = isWide ? 60.0 : 24.0;
+    final cols = w > 1100 ? 4 : (w > 680 ? 2 : 1);
+    final items = widget.reviews.where((r) => r['is_visible'] != false).toList();
 
-    return Container(
-      color: AppColors.lightBg,
-      padding: EdgeInsets.symmetric(horizontal: pad, vertical: 80),
+    final rows = <List<Map<String, dynamic>>>[
+      for (var i = 0; i < items.length; i += cols)
+        items.sublist(i, (i + cols).clamp(0, items.length)),
+    ];
+    final first = rows.isEmpty ? <Map<String, dynamic>>[] : rows.first;
+    final rest = rows.length > 1 ? rows.sublist(1) : <List<Map<String, dynamic>>>[];
+
+    return FxSection(
+      dark: true,
+      top: 110,
+      bottom: 110,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Big title like original
-          Text('Reviews',
-              style: GoogleFonts.syne(
-                color: AppColors.black,
-                fontWeight: FontWeight.w800,
-                fontSize: isWide ? 100 : 52,
-                letterSpacing: -4,
-                height: 0.88,
-              )).animate().fadeIn(duration: 600.ms),
-
-          const SizedBox(height: 12),
-
-          Text("We can't wait to work with you!\nGet inspired by the success stories from our most recent projects.",
-              style: GoogleFonts.dmSans(
-                color: AppColors.gray,
-                fontSize: 14,
-                height: 1.6,
-              )).animate().fadeIn(delay: 200.ms, duration: 600.ms),
-
+          // Same heading style as the About section's "About Me" label.
+          const Reveal(child: AccentLabel('Reviews')),
+          const SizedBox(height: 14),
+          Reveal(
+            delay: const Duration(milliseconds: 80),
+            child: Text('What clients say about working with me.',
+                textAlign: TextAlign.center,
+                style: Fx.body(size: 17, color: Colors.white.withValues(alpha: 0.6))),
+          ),
           const SizedBox(height: 48),
-
-          if (reviews.isEmpty)
-            Center(child: Text('No reviews yet.', style: TextStyle(color: AppColors.gray)))
-          else
-            isWide ? _wideGrid() : _narrowList(),
+          if (items.isEmpty)
+            Text('No reviews yet.', style: Fx.body(color: Fx.fg(true, 0.5)))
+          else ...[
+            _row(first, cols),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 600),
+              curve: Fx.ease,
+              alignment: Alignment.topCenter,
+              child: _showAll
+                  ? Column(children: [for (final r in rest) _row(r, cols)])
+                  : const SizedBox(width: double.infinity),
+            ),
+            if (rest.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _ViewAllButton(
+                text: _showAll ? 'Show less' : 'View all reviews (${items.length})',
+                expanded: _showAll,
+                onTap: () => setState(() => _showAll = !_showAll),
+              ),
+            ],
+          ],
         ],
       ),
     );
   }
-
-  // Wide: featured card on left (larger), rest in 2-col grid on right
-  Widget _wideGrid() {
-    final featured = reviews.where((r) => r['is_featured'] == true).toList();
-    final rest     = reviews.where((r) => r['is_featured'] != true).toList();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Featured dark card — takes 40% width
-        if (featured.isNotEmpty)
-          Expanded(
-            flex: 4,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: _ReviewCard(r: featured.first, delay: 0),
-            ),
-          ),
-
-        // Rest — 2 column grid, takes 60%
-        Expanded(
-          flex: 6,
-          child: _twoColGrid(rest),
-        ),
-      ],
-    );
-  }
-
-  Widget _twoColGrid(List<Map<String, dynamic>> items) {
-    final rows = <Widget>[];
-    for (int i = 0; i < items.length; i += 2) {
-      final pair = items.sublist(i, (i + 2).clamp(0, items.length));
-      rows.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: pair.asMap().entries.map((e) => Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(left: e.key == 0 ? 0 : 8, right: e.key == 0 ? 8 : 0),
-                child: _ReviewCard(r: e.value, delay: (i + e.key) * 80),
-              ),
-            )).toList(),
-          ),
-        ),
-      );
-    }
-    return Column(children: rows);
-  }
-
-  // Narrow: all cards stacked
-  Widget _narrowList() => Column(
-    children: reviews.asMap().entries.map((e) => Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _ReviewCard(r: e.value, delay: e.key * 80),
-    )).toList(),
-  );
 }
 
-class _ReviewCard extends StatelessWidget {
-  final Map<String, dynamic> r;
-  final int delay;
-  const _ReviewCard({required this.r, required this.delay});
+class _ViewAllButton extends StatefulWidget {
+  final String text;
+  final bool expanded;
+  final VoidCallback onTap;
+  const _ViewAllButton({required this.text, required this.expanded, required this.onTap});
 
-  Color _avatarColor(String name) {
-    const colors = [
-      Color(0xFFc0392b), Color(0xFF27ae60), Color(0xFF2980b9),
-      Color(0xFF8e44ad), Color(0xFFe67e22), Color(0xFF16a085),
-      Color(0xFFd35400),
-    ];
-    int h = 0;
-    for (final c in name.codeUnits) h = c + ((h << 5) - h);
-    return colors[h.abs() % colors.length];
+  @override
+  State<_ViewAllButton> createState() => _ViewAllButtonState();
+}
+
+class _ViewAllButtonState extends State<_ViewAllButton> {
+  bool _h = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return CursorHover(
+      onTap: widget.onTap,
+      onHover: (v) => setState(() => _h = v),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        decoration: BoxDecoration(
+          color: _h ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: Colors.white.withValues(alpha: _h ? 1 : 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.text,
+                style: Fx.body(size: 15, color: _h ? Fx.ink : Colors.white, height: 1.2)
+                    .copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            AnimatedRotation(
+              turns: widget.expanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 400),
+              curve: Fx.ease,
+              child: Icon(Icons.keyboard_arrow_down_rounded,
+                  size: 20, color: _h ? Fx.ink : Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+class _ReviewCard extends StatefulWidget {
+  final Map<String, dynamic> r;
+  const _ReviewCard({required this.r});
+
+  @override
+  State<_ReviewCard> createState() => _ReviewCardState();
+}
+
+class _ReviewCardState extends State<_ReviewCard> {
+  bool _h = false;
 
   String _initials(String name) {
-    final p = name.trim().split(' ');
-    return p.length >= 2
-        ? '${p[0][0]}${p[1][0]}'.toUpperCase()
-        : name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final p = name
+        .replaceFirst(RegExp(r'^(mr|mrs|ms|dr)\.?\s+', caseSensitive: false), '')
+        .trim()
+        .split(RegExp(r'\s+'));
+    if (p.isEmpty || p.first.isEmpty) return '?';
+    return p.length >= 2 ? '${p[0][0]}${p[1][0]}'.toUpperCase() : p[0][0].toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
-    final featured = r['is_featured'] == true;
-    final name     = (r['reviewer_name'] ?? '') as String;
-    final stars    = (r['stars'] ?? 5) as int;
-    final color    = _avatarColor(name);
+    final r = widget.r;
+    final name = (r['reviewer_name'] ?? '').toString();
+    final stars = (r['stars'] ?? 5) as int;
+    final subtitle = [r['role'], r['company']]
+        .map((s) => (s ?? '').toString().trim())
+        .where((s) => s.isNotEmpty)
+        .join(', ');
 
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        // Featured = dark black card (like original), normal = white card
-        color: featured ? AppColors.black : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: featured
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.07),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _h = true),
+      onExit: (_) => setState(() => _h = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Fx.ease,
+        transform: Matrix4.translationValues(0, _h ? -5 : 0, 0),
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: _h
+              ? [BoxShadow(color: Colors.white.withValues(alpha: 0.12), blurRadius: 30, offset: const Offset(0, 10))]
+              : const [],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: List.generate(
+                5,
+                (i) => Icon(Icons.star_rounded,
+                    size: 17,
+                    color: i < stars ? ReviewsSection.star : Colors.black.withValues(alpha: 0.12)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(r['review_text']?.toString() ?? '',
+                style: Fx.body(size: 14.5, color: Fx.ink, height: 1.6)),
+            const SizedBox(height: 18),
+            const Spacer(),
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Fx.ink),
+                  child: Text(_initials(name),
+                      style: Fx.body(size: 11, color: Colors.white, height: 1)
+                          .copyWith(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Fx.body(size: 14, color: Fx.ink, height: 1.3)
+                              .copyWith(fontWeight: FontWeight.w600)),
+                      if (subtitle.isNotEmpty)
+                        Text(subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Fx.body(size: 12, color: Fx.ink.withValues(alpha: 0.5), height: 1.3)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Orange stars — exactly like original
-          Row(
-            children: List.generate(5, (i) => Padding(
-              padding: const EdgeInsets.only(right: 2),
-              child: Icon(
-                Icons.star_rounded,
-                size: 18,
-                color: i < stars
-                    ? const Color(0xFFFF9800)   // orange like original
-                    : Colors.grey.withValues(alpha: 0.25),
-              ),
-            )),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Review text
-          Text('"${r['review_text'] ?? ''}"',
-              style: GoogleFonts.dmSans(
-                color: featured ? AppColors.white : AppColors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.65,
-              )),
-
-          const SizedBox(height: 20),
-
-          // Author row — avatar + name + role
-          Row(
-            children: [
-              // Avatar circle like original
-              r['avatar_url'] != null
-                  ? CircleAvatar(
-                      radius: 22,
-                      backgroundImage: NetworkImage(r['avatar_url'] as String),
-                    )
-                  : CircleAvatar(
-                      radius: 22,
-                      backgroundColor: color,
-                      child: Text(
-                        _initials(name),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-
-              const SizedBox(width: 12),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name
-                  Text(name,
-                      style: GoogleFonts.dmSans(
-                        color: featured ? AppColors.white : AppColors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      )),
-                  // Role · Company
-                  Text(
-                    '${r['role'] ?? ''}${r['company'] != null ? ' · ${r['company']}' : ''}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: featured
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : AppColors.gray,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    ).animate(delay: Duration(milliseconds: delay))
-        .fadeIn(duration: 500.ms)
-        .slideY(begin: 0.08, end: 0);
+    );
   }
 }
